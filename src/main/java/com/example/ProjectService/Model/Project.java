@@ -3,37 +3,58 @@ package com.example.ProjectService.Model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+@Data
 @Entity
-@Getter
-@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "projects")
 public class Project {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID projectId;
-    @ElementCollection
-    @CollectionTable(name = "project_skills", joinColumns = @JoinColumn(name = "project_id"))
-    @Column(name = "skill_id")
-    private Set<UUID> requiredSkillIds = new HashSet<>();
+
+    @Column(nullable = false, unique = true)
     private String title;
+
+    @Column(nullable = false)
     private String objective;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(nullable = false)
     private LocalDate dueDate;
+
+    @Column(nullable = false)
     private String criteria;
+
+    @Column(nullable = false)
     private String repo;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime modifiedAt;
+
+    @Column(nullable = false)
     private LocalDate lastDate;
+
+    @Column(nullable = false)
     private boolean openStatus;
+
     private LocalDateTime deletedAt;
 
-    // ✅ Add this for mentor (UserRef)
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mentor_id", referencedColumnName = "userId")
-    private UserRef mentor;
+    @Column(nullable = false)
+    private UUID mentorId; // Changed from User relationship to simple UUID
 }

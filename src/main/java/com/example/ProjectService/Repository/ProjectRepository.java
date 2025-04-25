@@ -11,6 +11,6 @@ import java.util.Optional;
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
     List<Project> findByDeletedAtIsNull();
     Optional<Project> findByTitleIgnoreCase(String title);
-    
     Optional<Project> findByProjectIdAndDeletedAtIsNull(UUID projectId);
+    boolean existsByTitleAndRepoAndDeletedAtIsNull(String title, String repo);
 }
