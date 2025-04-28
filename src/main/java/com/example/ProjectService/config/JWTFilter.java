@@ -49,7 +49,6 @@ public class JWTFilter extends OncePerRequestFilter {
             String token = authHeader.substring(BEARER_PREFIX.length());
             logger.debug("Processing JWT token: {}", token);
 
-            // Check if token is invalidated
             if (jwtUtil.isTokenInvalid(token)) {
                 logger.warn("Attempted use of invalidated token");
                 sendError(response, HttpServletResponse.SC_UNAUTHORIZED, 
@@ -57,7 +56,6 @@ public class JWTFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // Validate token and extract claims
             if (!jwtUtil.validateToken(token)) {
                 logger.warn("Invalid JWT token");
                 sendError(response, HttpServletResponse.SC_UNAUTHORIZED, 

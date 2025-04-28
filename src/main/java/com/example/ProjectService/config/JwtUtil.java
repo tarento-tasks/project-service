@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import jakarta.annotation.PostConstruct;
 
 @Component
@@ -38,11 +37,10 @@ public class JwtUtil {
         this.secretKeyDecoded = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    // Modified to accept email and roles directly
     public String generateToken(String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
-                .claim("authorities", List.of("ROLE_" + role))
+                .claim("authorities", List.of("ROLE_" + role)) // Add ROLE_ prefix here
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(secretKeyDecoded, SignatureAlgorithm.HS256)

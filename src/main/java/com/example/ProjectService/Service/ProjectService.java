@@ -7,9 +7,10 @@ import com.example.ProjectService.Model.Project;
 import com.example.ProjectService.Exception.BadRequestException;
 import com.example.ProjectService.Repository.ProjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,9 +21,12 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.context.annotation.Bean;
 
 @Service
 public class ProjectService {
+    @Autowired
+private HttpServletRequest request;
 
     @Autowired
     private ProjectRepository projectRepository;
@@ -33,7 +37,7 @@ public class ProjectService {
     @Value("${user.service.url}")
     private String userServiceUrl;
 
-    public static final String USER_SERVICE_URL = "http://localhost:8082/api/users/";
+    
 
     private ProjectDTO convertToDTO(Project project) {
         ProjectDTO dto = new ProjectDTO();
@@ -88,12 +92,31 @@ public class ProjectService {
         }
 
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(USER_SERVICE_URL + "?userId=" + mentorId, String.class);
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new ResourceNotFoundException("Mentor not found");
+            HttpHeaders headers = new HttpHeaders();
+            String token = request.getHeader("Authorization");
+            if (token != null) {
+                headers.set("Authorization", token);
             }
-        } catch (HttpClientErrorException.NotFound e) {
-            throw new ResourceNotFoundException("Mentor not found");
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                userServiceUrl + "?userId=" + mentorId,
+                HttpMethod.GET,
+                entity,
+                String.class
+            );
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new ResourceNotFoundException("Mentor verification failed with status: " + response.getStatusCode());
+            }
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                throw new ResourceNotFoundException("Mentor not found");
+            } else if (e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                throw new BadRequestException("Access denied while verifying mentor. Please check service authentication.");
+            }
+            throw new BadRequestException("Failed to verify mentor: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
         } catch (Exception e) {
             throw new BadRequestException("Failed to verify mentor: " + e.getMessage());
         }

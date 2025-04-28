@@ -32,6 +32,7 @@ public class ProjectController {
     private ProjectService projectService;
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
 public ResponseEntity<ApiResponse<List<ProjectDTO>>> getProjects(@RequestParam(required = false) UUID id) {
     try {
         ApiResponse<List<ProjectDTO>> response = projectService.getProjects(Optional.ofNullable(id));
