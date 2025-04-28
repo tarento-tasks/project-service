@@ -1,7 +1,7 @@
-package com.example.ProjectService.DTO;
+// package com.example.ProjectService.DTO;
 
-public class RoleDTO {
-    private String roleName;
+// public class RoleDTO {
+//     private String roleName;
 
-    // Getters and setters
-}
+//     // Getters and setters
+// }

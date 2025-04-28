@@ -2,6 +2,7 @@ package com.example.ProjectService.Controller;
 
 import com.example.ProjectService.DTO.ApiResponse;
 import com.example.ProjectService.DTO.ProjectDTO;
+import com.example.ProjectService.Exception.ResourceNotFoundException;
 import com.example.ProjectService.Service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -31,9 +32,15 @@ public class ProjectController {
     private ProjectService projectService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<ProjectDTO>>> getProjects(@RequestParam(required = false) UUID id) {
-        return ResponseEntity.ok(projectService.getProjects(Optional.ofNullable(id)));
+public ResponseEntity<ApiResponse<List<ProjectDTO>>> getProjects(@RequestParam(required = false) UUID id) {
+    try {
+        ApiResponse<List<ProjectDTO>> response = projectService.getProjects(Optional.ofNullable(id));
+        return ResponseEntity.ok(response);
+    } catch (ResourceNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ApiResponse<>(HttpStatus.NOT_FOUND.value(), e.getMessage(), null));
     }
+}
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")

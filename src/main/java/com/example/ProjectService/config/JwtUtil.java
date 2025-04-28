@@ -1,81 +1,81 @@
-// package com.example.ProjectService.config;
+package com.example.ProjectService.config;
 
-// import com.example.ProjectService.Model.InvalidatedToken;
+import com.example.ProjectService.Model.InvalidatedToken;
+import com.example.ProjectService.Repository.InvalidatedTokenRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-// import com.example.ProjectService.Repository.InvalidatedTokenRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import jakarta.annotation.PostConstruct;
 
-// import io.jsonwebtoken.Claims;
-// import io.jsonwebtoken.Jwts;
-// import io.jsonwebtoken.SignatureAlgorithm;
-// import io.jsonwebtoken.security.Keys;
-// import org.springframework.beans.factory.annotation.Value;
-// import org.springframework.stereotype.Component;
-// import java.util.UUID;
-// import jakarta.annotation.PostConstruct; // For Spring Boot 3.x
-// import java.nio.charset.StandardCharsets;
-// import java.security.Key;
-// import java.util.Date;
-// import java.util.List;
+@Component
+public class JwtUtil {
+    private Key secretKeyDecoded;
+    private static final long EXPIRATION_TIME = 86400000; // 1 day
 
+    private final InvalidatedTokenRepository invalidatedTokenRepository;
 
+    @Value("${jwt.secret}")
+    private String secretKey;
 
+    public JwtUtil(InvalidatedTokenRepository invalidatedTokenRepository) {
+        this.invalidatedTokenRepository = invalidatedTokenRepository;
+    }
 
+    @PostConstruct
+    public void init() {
+        if (secretKey == null || secretKey.length() < 32) {
+            throw new IllegalArgumentException("JWT Secret Key must be at least 32 bytes long");
+        }
+        this.secretKeyDecoded = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
 
+    // Modified to accept email and roles directly
+    public String generateToken(String email, String role) {
+        return Jwts.builder()
+                .setSubject(email)
+                .claim("authorities", List.of("ROLE_" + role))
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .signWith(secretKeyDecoded, SignatureAlgorithm.HS256)
+                .compact();
+    }
 
-// @Component
-// public class JwtUtil {
+    public String extractUsername(String token) {
+        return getClaims(token).getSubject();
+    }
 
-//     private Key secretKey;
-//     private static final long EXPIRATION_TIME = 86400000; // 24 hours
+    public Claims getClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(secretKeyDecoded)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
 
-//     @Value("${jwt.secret}")
-//     private String secretKeyString;
+    public Boolean validateToken(String token) {
+        return !isTokenExpired(token) && !isTokenInvalid(token);
+    }
 
-//     @PostConstruct
-//     public void init() {
-//         if (secretKeyString == null || secretKeyString.length() < 32) {
-//             throw new IllegalArgumentException("JWT Secret Key must be at least 32 bytes long");
-//         }
-//         this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes(StandardCharsets.UTF_8));
-//     }
+    private Boolean isTokenExpired(String token) {
+        return getClaims(token).getExpiration().before(new Date());
+    }
 
-//     public Claims extractAllClaims(String token) {
-//         return Jwts.parserBuilder()
-//                 .setSigningKey(secretKey)
-//                 .build()
-//                 .parseClaimsJws(token)
-//                 .getBody();
-//     }
+    public void invalidateToken(String token) {
+        Date expirationDate = getClaims(token).getExpiration();
+        InvalidatedToken invalidatedToken = new InvalidatedToken(token, expirationDate);
+        invalidatedTokenRepository.save(invalidatedToken);
+    }
 
-//     public String extractUsername(String token) {
-//         return extractAllClaims(token).getSubject();
-//     }
-
-//     public UUID extractUserId(String token) {
-//         return UUID.fromString(extractAllClaims(token).get("user_id", String.class));
-//     }
-
-//     public boolean isTokenExpired(String token) {
-//         return extractAllClaims(token).getExpiration().before(new Date());
-//     }
-
-//     public boolean isTokenInvalid(String token) {
-//         // In a microservice architecture, you might want to call the User Service
-//         // to check if the token is invalidated, or use a shared Redis cache
-//         // For simplicity, we're just checking expiration here
-//         return isTokenExpired(token);
-//     }
-
-//     // This method would typically only be in the User Service
-//     // Included here for completeness, but you might want to remove it
-//     public String generateToken(String email, UUID userId, List<String> roles) {
-//         return Jwts.builder()
-//                 .setSubject(email)
-//                 .claim("user_id", userId.toString())
-//                 .claim("authorities", roles)
-//                 .setIssuedAt(new Date())
-//                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-//                 .signWith(secretKey, SignatureAlgorithm.HS256)
-//                 .compact();
-//     }
-// }
+    public boolean isTokenInvalid(String token) {
+        return invalidatedTokenRepository.findByToken(token).isPresent();
+    }
+}
